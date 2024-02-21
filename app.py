@@ -4,7 +4,7 @@ import plotly.express as px
 import pandas as pd
 import numpy as np
 import cv2
-from utils import get_id_mask
+from utils import get_id_mask, rle_decode
 
 df = pd.read_csv('train_data_processed.csv')
 
@@ -46,17 +46,40 @@ app.layout = dbc.Container([
 )
 def update_animation(type, case):
     if type=='Animated Segmentations':
-        img_paths = df.loc[df['case']==case][['path', 'ids']]
-        masks = []
-        for path, id in zip(img_paths, img_ids):
+        case_df = df.loc[df['case']==case]
+        idxs = case_df.index
+        img_paths = case_df['path'].values
+        
+        masks_arr = []
+        imgs = []
+        for path, idx in zip(img_paths, idxs):            
             img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
             # Resize the image to 224 x 224.
+            img = cv2.resize(img, (224,224))
+            # mask = get_id_mask(id, df)
+            imgs.append(img)
 
-            mask = get_id_mask(id, df)
-            masks.append(mask)
+            # Appending Masks
+            masks = np.zeros((224,224, 3), dtype=np.float32)
+
+
+            for k,j in zip([0,1,2],["large_bowel","small_bowel","stomach"]):
+                rles=df[j].iloc[idx]
+                if pd.isnull(rles):
+                    continue
+                h = img.shape[0]
+                w = img.shape[1]
+                mask = rle_decode(rles, shape=(h, w, 1))
+                mask = cv2.resize(mask, (224,224))
+                masks[:,:,k] = mask
+            
+            masks_arr.append(masks)
 
         imgs = np.array(imgs)
+        masks_arr = np.array(masks_arr)
         fig = px.imshow(imgs, animation_frame=0, binary_string=True, labels=dict(animation_frame="slice"))
+        # fig.add_heatmap(z=masks, opacity=0.5, colorscale='Viridis', zmin=0, zmax=1)
+
     return fig, 'Animated Window'
 
 if __name__=="__main__":
