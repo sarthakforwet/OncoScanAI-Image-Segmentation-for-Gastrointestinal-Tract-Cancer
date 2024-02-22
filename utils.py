@@ -88,3 +88,22 @@ def rle_decode(mask_rle, shape):
     for lo, hi in zip(starts, ends):
         img[lo:hi] = 1
     return img.reshape(shape)  # Needed to align to RLE direction
+
+
+# Function to decode run-length encoding
+def decode_rle(rle):
+    if pd.isnull(rle):
+        return
+
+    return rle_decode(rle)
+    # runs = [[int(x) for x in p.split()] for p in rle.split(" ")]
+    # return [i for x in runs for i in [x[0]] * x[1]]
+
+# Function to create mask image
+def create_mask_image(mask, width, height):
+    decoded_mask = decode_rle(mask)
+    if pd.isnull(decoded_mask):
+        return
+    mask_image = np.zeros((height, width))
+    mask_image[np.array(decoded_mask[::2]) - 1, np.array(decoded_mask[1::2]) - 1] = 1
+    return mask_image
