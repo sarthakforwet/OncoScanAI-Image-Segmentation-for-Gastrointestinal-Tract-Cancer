@@ -96,8 +96,6 @@ def decode_rle(rle):
         return
 
     return rle_decode(rle)
-    # runs = [[int(x) for x in p.split()] for p in rle.split(" ")]
-    # return [i for x in runs for i in [x[0]] * x[1]]
 
 # Function to create mask image
 def create_mask_image(mask, width, height):
