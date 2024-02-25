@@ -48,4 +48,4 @@ navbar = dbc.NavbarSimple(
 app.layout = dbc.Container([navbar, dash.page_container], fluid=True)
 
 if __name__=="__main__":
-    app.run_server(port=8063, debug=False)
+    app.run_server(port=8064, debug=False)
