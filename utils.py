@@ -1,5 +1,69 @@
 import numpy as np
 import pandas as pd
+pd.options.plotting.backend = "plotly"
+import random
+from glob import glob
+import os, shutil
+from tqdm import tqdm
+tqdm.pandas()
+import time
+# import joblib
+from collections import defaultdict
+import gc
+# from IPython import display as ipd
+
+# visualization
+import cv2
+import matplotlib.pyplot as plt
+
+# Sklearn
+from sklearn.model_selection import StratifiedGroupKFold
+
+# PyTorch 
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.optim import lr_scheduler
+from torch.utils.data import Dataset, DataLoader
+from torch.cuda import amp
+
+from joblib import Parallel, delayed
+from matplotlib.patches import Rectangle
+
+
+import warnings
+warnings.filterwarnings("ignore")
+
+# For descriptive error messages
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+import segmentation_models_pytorch as smp
+import torch, torchvision.models
+import plotly.express as px
+
+
+class CFG:
+    seed          = 101
+    debug         = False # set debug=False for Full Training
+    exp_name      = 'Baselinev2'
+    comment       = 'unet-efficientnet_b1-224x224-aug2-split2'
+    model_name    = 'Unet'
+    backbone      = 'efficientnet-b1'
+    train_bs      = 128
+    valid_bs      = train_bs*2
+    img_size      = [224, 224]
+    epochs        = 15
+    lr            = 2e-3
+    scheduler     = 'CosineAnnealingLR'
+    min_lr        = 1e-6
+    T_max         = int(30000/train_bs*epochs)+50
+    T_0           = 25
+    warmup_epochs = 0
+    wd            = 1e-6
+    n_accumulate  = max(1, 32//train_bs)
+    n_fold        = 5
+    num_classes   = 3
+    device        = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 def mask_from_segmentation(segmentation, shape):
     '''Returns the mask corresponding to the inputed segmentation.
@@ -71,7 +135,6 @@ def get_id_mask(ID, train, verbose=False):
             
     return mask
 
-
 def rle_decode(mask_rle, shape):
     '''
     Function to Perform Run Length Decoding
@@ -105,3 +168,70 @@ def create_mask_image(mask, width, height):
     mask_image = np.zeros((height, width))
     mask_image[np.array(decoded_mask[::2]) - 1, np.array(decoded_mask[1::2]) - 1] = 1
     return mask_image
+
+
+def load_model(path):
+    model = build_model()
+    model.load_state_dict(torch.load(path))
+    model.eval()
+    return model
+
+def build_model():
+    model = smp.Unet(
+        encoder_name=CFG.backbone,      # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+        encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
+        in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+        classes=CFG.num_classes,        # model output channels (number of classes in your dataset)
+        activation=None,
+    )
+    model.to(CFG.device)
+    return model
+
+def show_img(img, mask=None):
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+#     img = clahe.apply(img)
+#     plt.figure(figsize=(10,10))
+    px.imshow(img, cmap='bone')
+    
+    if mask is not None:
+        # plt.imshow(np.ma.masked_where(mask!=1, mask), alpha=0.5, cmap='autumn')
+        plt.imshow(mask, alpha=0.5)
+        
+        handles = [Rectangle((0,0),1,1, color=_c) for _c in [(0.667,0.0,0.0), (0.0,0.667,0.0), (0.0,0.0,0.667)]]
+        labels = ["Large Bowel", "Small Bowel", "Stomach"]
+        plt.legend(handles,labels)
+    plt.axis('off')
+
+import io
+import base64
+def show_img_v2(img, mask=None):
+    fig = plt.figure()
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    buf = io.BytesIO() # in-memory files
+    ax = fig.add_subplot(111)
+    ax.imshow(img, cmap='bone')
+    
+    if mask is not None:
+        ax.imshow(mask, alpha=0.5)
+        handles = [Rectangle((0,0),1,1, color=_c) for _c in [(0.667,0.0,0.0), (0.0,0.667,0.0), (0.0,0.0,0.667)]]
+        labels = ["Large Bowel", "Small Bowel", "Stomach"]
+    ax.axis('off')
+    plt.savefig(buf, format = "png")
+
+    plt.close()
+    data = base64.b64encode(buf.getbuffer()).decode("utf8") # encode to html elements
+    buf.close()
+    return "data:image/png;base64,{}".format(data)
+
+
+def plot_single(img, pred):
+    img = img.cpu().detach()
+    pred = pred.cpu().detach()
+
+    img = img[0,].permute((1,2,0)).numpy() * 255
+    img = img.astype('uint8')
+    msk = pred[0,].permute((1,2,0)).numpy() * 255
+
+    out = show_img_v2(img, msk)
+    return out
+

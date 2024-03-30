@@ -11,7 +11,7 @@ import cv2
 from imageio import imread
 import io
 from PIL import Image
-from utils import build_model, load_model, visualize_batch
+from utils import build_model, load_model, CFG, plot_single
 import torch
 import torchvision.transforms.functional as F
 
@@ -27,7 +27,6 @@ prediction_figure = dcc.Graph(figure = {})
 case_dropdown = dcc.Dropdown(options = sorted(df['case'].unique()),
                              value=123,
                              clearable=False)
-
 
 layout = dbc.Container([
     dbc.Row([
@@ -55,12 +54,14 @@ layout = dbc.Container([
             },
             multiple=False,
         ),
-        dbc.Col([prediction_figure], width=6)
+        # dbc.Col([prediction_figure], width=6)
+        html.Img(id='pred_fig')
     ]),
 ], fluid=True)
 
 @callback(
-    Output(prediction_figure, 'figure'),
+    # Output(prediction_figure, 'figure'),
+    Output('pred_fig', 'src'),
     Output(graphtitle, 'children'),
     Input('upload-data', 'contents'),
     State('upload-data', 'filename'),
@@ -70,42 +71,26 @@ layout = dbc.Container([
 def update_animation(img, filenames, last_modified):
     content_type, content_string = img.split(',')
     image_data = base64.b64decode(content_string)
-    image = np.array(Image.open(io.BytesIO(image_data)))
-    image = np.float32(image)
-    image = cv2.cvtColor(image,cv2.COLOR_GRAY2BGR)
-    # fig = px.imshow(image)
-    # image = image.astype('float')
-    image = torch.tensor(image)    
-    # image = F.resize(image, (224,224,3))
-    image = image.resize_(224,224,3)
-    image = image.permute(2,1,0)
-    image = image[None, :, :, :]
+    img = np.array(Image.open(io.BytesIO(image_data)))
+    
+    img = (img - img.min())/(img.max() - img.min()) * 255.0 
+    img = cv2.resize(img, (224,224))
+    img = np.tile(img[...,None], [1, 1, 3]) # gray to rgb
+    img = img.astype(np.float32) /255.
+    img = img.transpose(2, 0, 1)
+    img = np.expand_dims(img, axis=0)
+    img = torch.tensor(img)
+    img = img.to(CFG.device)
 
-
-    model = load_model("vgg19-dcbb9e9d.pth")
-
-    img = cv2.imread('pred.png', cv2.IMREAD_UNCHANGED)
-    fig = px.imshow(img)
-    return fig, 'Prediction Window'
-    # model = torch.load_state_dict(torch.load('vgg19-dcbb9e9d.pth'))
-    # model.load_state_dict(model)
-    # print(model)
-
+    print(img.shape)
+    model = load_model('best_epoch-00.bin')
     with torch.no_grad():
-        pred = model(image)
+        pred = model(img)
         pred = (nn.Sigmoid()(pred)>0.5).double()
+
+    print(pred.shape)
+    out = plot_single(img, pred)
     
-    image = torch.squeeze(image, 0).permute(1,2,0)
-    
-    image  = image.cpu().detach()
-    # preds = torch.mean(torch.stack(pred, dim=0), dim=0).cpu().detach()
-    preds = [pred]
-    preds = torch.mean(torch.stack(preds, dim=0), dim=0).cpu().detach()
-    # print(preds.shape)
-    # pred = pred.cpu().detach()
-    preds = preds.resize_(224,224,1)
-
-
-
-    fig = visualize_batch(image, preds)
-    return fig, 'Prediction Window'
+    # fig = px.imshow(pred)
+    # fig = visualize_batch(image, preds)
+    return out, 'Prediction Window'
