@@ -30,7 +30,6 @@ from torch.cuda import amp
 from joblib import Parallel, delayed
 from matplotlib.patches import Rectangle
 
-
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -169,7 +168,6 @@ def create_mask_image(mask, width, height):
     mask_image[np.array(decoded_mask[::2]) - 1, np.array(decoded_mask[1::2]) - 1] = 1
     return mask_image
 
-
 def load_model(path, pretrained = True):
     if pretrained:
         model = build_model()
@@ -178,7 +176,6 @@ def load_model(path, pretrained = True):
     else:
         model = torch.load(path)
     return model
-
 
 def build_model():
     model = smp.Unet(
@@ -238,4 +235,3 @@ def plot_single(img, pred):
 
     out = show_img_v2(img, msk)
     return out
-
