@@ -170,11 +170,15 @@ def create_mask_image(mask, width, height):
     return mask_image
 
 
-def load_model(path):
-    model = build_model()
-    model.load_state_dict(torch.load(path))
-    model.eval()
+def load_model(path, pretrained = True):
+    if pretrained:
+        model = build_model()
+        model.load_state_dict(torch.load(path))
+        model.eval()
+    else:
+        model = torch.load(path)
     return model
+
 
 def build_model():
     model = smp.Unet(
