@@ -25,7 +25,14 @@ layout = dbc.Container([
 ], justify='left'),
     dbc.Row([
         dbc.Col([graphtitle], width=6)
-    ], justify='center'),
+    ], justify='left'),
+    dbc.Row([
+        dbc.Col([
+            dcc.Loading(
+            id='loading',
+            type='circle',
+            children = html.Div(id = 'loading_output'))], style={'height':'1.8cm'})
+            ]),
     dbc.Row([
         dbc.Col([animated_figure], width=9)
     ]),
@@ -35,6 +42,7 @@ layout = dbc.Container([
 ], fluid=True)
 
 @callback(
+    Output('loading_output', 'children'),
     Output(animated_figure, 'figure'),
     Output(graphtitle, 'children'),
     Input(case_dropdown, 'value'),
@@ -59,4 +67,4 @@ def update_animation(case):
     fig = px.imshow(imgs, animation_frame=0, binary_string=True, labels=dict(animation_frame="slice"))
     # fig.add_heatmap(z=masks, opacity=0.5, colorscale='Viridis', zmin=0, zmax=1)
 
-    return fig, 'Animated Window'
+    return  '', fig, 'Animation Loaded Successfully'

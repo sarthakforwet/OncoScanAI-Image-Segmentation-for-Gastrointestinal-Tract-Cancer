@@ -13,6 +13,7 @@ about = dcc.Markdown(children = "# OncoScan: Image Segmentation for Gastrointest
 layout = html.Div([
     # html.Img(src="S:/DS 5500 - Capstone/Image-Segmentation-for-Gastrointestinal-Tract-Cancer/about_page_image.jpg", alt='My Image'),
     html.H1("Home Page", style={'textAlign':'center'}),
+
     html.Div([
         html.P('OncoScan AI is a platform for masking images of stomach and intestine from the tumor through analysis on our gastrointestinal MRI Scan. Our interface would allow you to get a \
                thorough understanding of how the MRI scans look like with its masked segmentation of stomach and intestine from the tumor which helps the machine to direct radiation directly on tumor \

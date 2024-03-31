@@ -83,7 +83,7 @@ def update_animation(img, filenames, last_modified):
     img = img.to(CFG.device)
 
     print(img.shape)
-    model = load_model('best_epoch-00.bin')
+    model = load_model(r"S:\DS 5500 - Capstone\Image-Segmentation-for-Gastrointestinal-Tract-Cancer\full_custom_model.pt", False)
     with torch.no_grad():
         pred = model(img)
         pred = (nn.Sigmoid()(pred)>0.5).double()
