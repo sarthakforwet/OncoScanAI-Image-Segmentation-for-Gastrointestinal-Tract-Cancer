@@ -7,12 +7,10 @@ import os, shutil
 from tqdm import tqdm
 tqdm.pandas()
 import time
-# import joblib
+
 from collections import defaultdict
 import gc
-# from IPython import display as ipd
 
-# visualization
 import cv2
 import matplotlib
 matplotlib.use('Agg')
@@ -43,6 +41,9 @@ import plotly.express as px
 
 
 class CFG:
+    """
+    Configuration class for model training parameters.
+    """
     seed          = 101
     debug         = False # set debug=False for Full Training
     exp_name      = 'Baselinev2'
@@ -67,11 +68,16 @@ class CFG:
 
 
 def mask_from_segmentation(segmentation, shape):
-    '''Returns the mask corresponding to the inputed segmentation.
-    segmentation: a list of start points and lengths in this order
-    max_shape: the shape to be taken by the mask
-    return:: a 2D mask'''
+    '''
+    Returns the mask corresponding to the inputted segmentation.
 
+    Parameters:
+        segmentation (str): A list of start points and lengths.
+        shape (tuple): The shape to be taken by the mask.
+
+    Returns:
+        np.array: A 2D mask.
+    '''
     # Get a list of numbers from the initial segmentation
     segm = np.asarray(segmentation.split(), dtype=int)
 
@@ -83,7 +89,7 @@ def mask_from_segmentation(segmentation, shape):
     end_point = start_point + length_point
 
     # Create an empty list mask the size of the original image
-    # take onl
+    # take only
     case_mask = np.zeros(shape[0]*shape[1], dtype=np.uint8)
 
     # Change pixels from 0 to 1 that are within the segmentation
@@ -95,24 +101,26 @@ def mask_from_segmentation(segmentation, shape):
     return case_mask
 
 def get_id_mask(ID, train, verbose=False):
-    '''Returns a mask for each case ID. If no segmentation was found, the mask will be empty
-    - meaning formed by only 0
-    ID: the case ID from the train.csv file
-    verbose: True if we want any prints
-    return: segmentation mask'''
+    '''
+    Returns a mask for each case ID. If no segmentation was found, the mask will be empty
+    - meaning formed by only 0.
 
-    # ~~~ Get the data ~~~
-    # Get the portion of dataframe where we have ONLY the speciffied ID
+    Parameters:
+        ID (int): The case ID from the train.csv file.
+        train (pd.DataFrame): DataFrame containing training data.
+        verbose (bool): True if we want any prints.
+
+    Returns:
+        np.array: Segmentation mask.
+    '''
+    # Get the portion of dataframe where we have ONLY the specified ID
     ID_data = train[train["id"]==ID].reset_index(drop=True)
 
     # Split the dataframe into 3 series of observations
-    # each for one speciffic class - "large_bowel", "small_bowel", "stomach"
+    # each for one specific class - "large_bowel", "small_bowel", "stomach"
     observations = [ID_data.loc[k, :] for k in range(3)]
 
-    # ~~~ Create the mask ~~~
-    # Get the maximum height out of all observations
-    # if max == 0 then no class has a segmentation
-    # otherwise we keep the length of the mask
+    # Create the mask
     max_height = np.max([obs.image_height for obs in observations])
     max_width = np.max([obs.image_width for obs in observations])
 
@@ -138,11 +146,14 @@ def get_id_mask(ID, train, verbose=False):
 
 def rle_decode(mask_rle, shape):
     '''
-    Function to Perform Run Length Decoding
+    Function to Perform Run Length Decoding.
     
-    mask_rle: run-length as string formated (start length)
-    shape: (height,width) of array to return
-    Returns numpy array, 1 - mask, 0 - background
+    Parameters:
+        mask_rle (str): Run-length as string formatted (start length).
+        shape (tuple): (height,width) of array to return.
+
+    Returns:
+        numpy array: 1 - mask, 0 - background.
     '''
     s = mask_rle.split()
     starts, lengths = [np.asarray(x, dtype=int) for x in (s[0:-1][::2], s[1:][::2])]
@@ -154,15 +165,33 @@ def rle_decode(mask_rle, shape):
     return img.reshape(shape)  # Needed to align to RLE direction
 
 
-# Function to decode run-length encoding
 def decode_rle(rle):
+    '''
+    Function to decode run-length encoding.
+
+    Parameters:
+        rle (str): Run-length encoding.
+
+    Returns:
+        numpy array: Decoded mask image.
+    '''
     if pd.isnull(rle):
         return
 
     return rle_decode(rle)
 
-# Function to create mask image
 def create_mask_image(mask, width, height):
+    '''
+    Function to create mask image.
+
+    Parameters:
+        mask (str): Mask as run-length encoded string.
+        width (int): Width of the mask image.
+        height (int): Height of the mask image.
+
+    Returns:
+        numpy array: Mask image.
+    '''
     decoded_mask = decode_rle(mask)
     if pd.isnull(decoded_mask):
         return
@@ -171,6 +200,16 @@ def create_mask_image(mask, width, height):
     return mask_image
 
 def load_model(path, pretrained = True):
+    '''
+    Function to load a PyTorch model.
+
+    Parameters:
+        path (str): Path to the model file.
+        pretrained (bool): Whether to load pre-trained weights.
+
+    Returns:
+        nn.Module: PyTorch model.
+    '''
     if pretrained:
         model = build_model()
         model.load_state_dict(torch.load(path))
@@ -180,6 +219,12 @@ def load_model(path, pretrained = True):
     return model
 
 def build_model():
+    '''
+    Function to build a segmentation model.
+
+    Returns:
+        nn.Module: Segmentation model.
+    '''
     model = smp.Unet(
         encoder_name=CFG.backbone,      # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
         encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
@@ -190,26 +235,18 @@ def build_model():
     model.to(CFG.device)
     return model
 
-def show_img(img, mask=None):
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-#     img = clahe.apply(img)
-#     plt.figure(figsize=(10,10))
-    px.imshow(img, cmap='bone')
-    
-    if mask is not None:
-        # plt.imshow(np.ma.masked_where(mask!=1, mask), alpha=0.5, cmap='autumn')
-        plt.imshow(mask, alpha=0.5)
-        
-        handles = [Rectangle((0,0),1,1, color=_c) for _c in [(0.667,0.0,0.0), (0.0,0.667,0.0), (0.0,0.0,0.667)]]
-        labels = ["Large Bowel", "Small Bowel", "Stomach"]
-        plt.legend(handles,labels)
-    plt.axis('off')
-
-import io
-import base64
 def show_img_v2(img, mask=None):
+    '''
+    Function to display image with mask overlay.
+
+    Parameters:
+        img (numpy array): Input image.
+        mask (numpy array): Mask image.
+
+    Returns:
+        str: Base64-encoded image for displaying in HTML.
+    '''
     fig = plt.figure()
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     buf = io.BytesIO() # in-memory files
     ax = fig.add_subplot(111)
     ax.imshow(img, cmap='bone')
@@ -226,8 +263,17 @@ def show_img_v2(img, mask=None):
     buf.close()
     return "data:image/png;base64,{}".format(data)
 
-
 def plot_single(img, pred):
+    '''
+    Function to plot image with predicted mask.
+
+    Parameters:
+        img (torch.Tensor): Input image tensor.
+        pred (torch.Tensor): Predicted mask tensor.
+
+    Returns:
+        str: Base64-encoded image for displaying in HTML.
+    '''
     img = img.cpu().detach()
     pred = pred.cpu().detach()
 

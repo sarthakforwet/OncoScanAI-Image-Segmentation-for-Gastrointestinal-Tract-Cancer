@@ -7,7 +7,7 @@ import cv2
 import plotly.express as px
 from PIL import Image
 
-img = Image.open(r'S:\DS 5500 - Capstone\Image-Segmentation-for-Gastrointestinal-Tract-Cancer\assets\about_image.jpg')
+img = Image.open(r'about_image.jpg')
 
 dash.register_page(__name__, path='/')
 
