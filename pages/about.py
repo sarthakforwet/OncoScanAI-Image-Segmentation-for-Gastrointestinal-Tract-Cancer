@@ -5,6 +5,9 @@ import pandas as pd
 import numpy as np
 import cv2
 import plotly.express as px
+from PIL import Image
+
+img = Image.open(r'S:\DS 5500 - Capstone\Image-Segmentation-for-Gastrointestinal-Tract-Cancer\assets\about_image.jpg')
 
 dash.register_page(__name__, path='/')
 
@@ -13,7 +16,7 @@ about = dcc.Markdown(children = "# OncoScan: Image Segmentation for Gastrointest
 layout = html.Div([
     # html.Img(src="S:/DS 5500 - Capstone/Image-Segmentation-for-Gastrointestinal-Tract-Cancer/about_page_image.jpg", alt='My Image'),
     html.H1("Home Page", style={'textAlign':'center'}),
-
+    html.Center(html.Img(src = img, style ={"width":"30%", 'height':"30%"})),
     html.Div([
         html.P('OncoScan AI is a platform for masking images of stomach and intestine from the tumor through analysis on our gastrointestinal MRI Scan. Our interface would allow you to get a \
                thorough understanding of how the MRI scans look like with its masked segmentation of stomach and intestine from the tumor which helps the machine to direct radiation directly on tumor \
