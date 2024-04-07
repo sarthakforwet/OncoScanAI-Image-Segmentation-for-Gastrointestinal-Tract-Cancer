@@ -1,3 +1,4 @@
+
 import numpy as np
 import pandas as pd
 pd.options.plotting.backend = "plotly"
@@ -7,12 +8,10 @@ import os, shutil
 from tqdm import tqdm
 tqdm.pandas()
 import time
-# import joblib
+
 from collections import defaultdict
 import gc
-# from IPython import display as ipd
 
-# visualization
 import cv2
 import matplotlib
 matplotlib.use('Agg')
@@ -163,6 +162,17 @@ def decode_rle(rle):
 
 # Function to create mask image
 def create_mask_image(mask, width, height):
+    """
+    Create a mask image from a run-length encoded (RLE) format.
+    
+    Args:
+    - mask (str): The RLE-encoded mask string.
+    - width (int): Width of the mask image.
+    - height (int): Height of the mask image.
+    
+    Returns:
+    - mask_image (numpy.ndarray or None): The mask image as a numpy array, or None if the decoded mask is NaN.
+    """
     decoded_mask = decode_rle(mask)
     if pd.isnull(decoded_mask):
         return
@@ -170,7 +180,17 @@ def create_mask_image(mask, width, height):
     mask_image[np.array(decoded_mask[::2]) - 1, np.array(decoded_mask[1::2]) - 1] = 1
     return mask_image
 
-def load_model(path, pretrained = True):
+def load_model(path, pretrained=True):
+    """
+    Load a model from a given path.
+    
+    Args:
+    - path (str): The path to the model file.
+    - pretrained (bool): Whether to load pretrained weights.
+    
+    Returns:
+    - model: The loaded model.
+    """
     if pretrained:
         model = build_model()
         model.load_state_dict(torch.load(path))
@@ -180,6 +200,12 @@ def load_model(path, pretrained = True):
     return model
 
 def build_model():
+    """
+    Build a U-Net model.
+    
+    Returns:
+    - model: The U-Net model.
+    """
     model = smp.Unet(
         encoder_name=CFG.backbone,      # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
         encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
@@ -190,24 +216,19 @@ def build_model():
     model.to(CFG.device)
     return model
 
-def show_img(img, mask=None):
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-#     img = clahe.apply(img)
-#     plt.figure(figsize=(10,10))
-    px.imshow(img, cmap='bone')
-    
-    if mask is not None:
-        # plt.imshow(np.ma.masked_where(mask!=1, mask), alpha=0.5, cmap='autumn')
-        plt.imshow(mask, alpha=0.5)
-        
-        handles = [Rectangle((0,0),1,1, color=_c) for _c in [(0.667,0.0,0.0), (0.0,0.667,0.0), (0.0,0.0,0.667)]]
-        labels = ["Large Bowel", "Small Bowel", "Stomach"]
-        plt.legend(handles,labels)
-    plt.axis('off')
-
 import io
 import base64
 def show_img_v2(img, mask=None):
+    """
+    Display an image with an optional mask overlay and return the image encoded as base64.
+    
+    Args:
+    - img (numpy.ndarray): The input image.
+    - mask (numpy.ndarray or None): The mask image to overlay on the input image, or None if no mask is provided.
+    
+    Returns:
+    - str: Base64-encoded image data.
+    """
     fig = plt.figure()
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     buf = io.BytesIO() # in-memory files
@@ -219,15 +240,23 @@ def show_img_v2(img, mask=None):
         handles = [Rectangle((0,0),1,1, color=_c) for _c in [(0.667,0.0,0.0), (0.0,0.667,0.0), (0.0,0.0,0.667)]]
         labels = ["Large Bowel", "Small Bowel", "Stomach"]
     ax.axis('off')
-    plt.savefig(buf, format = "png")
-
+    plt.savefig(buf, format="png")
     plt.close()
-    data = base64.b64encode(buf.getbuffer()).decode("utf8") # encode to html elements
+    data = base64.b64encode(buf.getbuffer()).decode("ascii") # encode to html elements
     buf.close()
     return "data:image/png;base64,{}".format(data)
 
-
 def plot_single(img, pred):
+    """
+    Plot a single image and its corresponding prediction.
+    
+    Args:
+    - img (torch.Tensor): The input image tensor.
+    - pred (torch.Tensor): The predicted mask tensor.
+    
+    Returns:
+    - str: Base64-encoded image data.
+    """
     img = img.cpu().detach()
     pred = pred.cpu().detach()
 
@@ -237,3 +266,7 @@ def plot_single(img, pred):
 
     out = show_img_v2(img, msk)
     return out
+
+
+if  __name__ == "__main__":
+    plot_singles()
