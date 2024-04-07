@@ -62,9 +62,7 @@ def update_animation(case):
         imgs.append(img)
 
     imgs = np.array(imgs)
-    # masks_arr = np.array(masks_arr)
 
     fig = px.imshow(imgs, animation_frame=0, binary_string=True, labels=dict(animation_frame="slice"))
-    # fig.add_heatmap(z=masks, opacity=0.5, colorscale='Viridis', zmin=0, zmax=1)
 
     return  '', fig, 'Animation Loaded Successfully'

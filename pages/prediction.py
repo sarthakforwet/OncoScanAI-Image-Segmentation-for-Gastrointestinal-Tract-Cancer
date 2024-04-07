@@ -54,13 +54,11 @@ layout = dbc.Container([
             },
             multiple=False,
         ),
-        # dbc.Col([prediction_figure], width=6)
         html.Img(id='pred_fig')
     ]),
 ], fluid=True)
 
 @callback(
-    # Output(prediction_figure, 'figure'),
     Output('pred_fig', 'src'),
     Output(graphtitle, 'children'),
     Input('upload-data', 'contents'),
@@ -83,7 +81,7 @@ def update_animation(img, filenames, last_modified):
     img = img.to(CFG.device)
 
     print(img.shape)
-    model = load_model(r"S:\DS 5500 - Capstone\Image-Segmentation-for-Gastrointestinal-Tract-Cancer\full_custom_model.pt", False)
+    model = load_model(r"S:\DS 5500 - Capstone\Image-Segmentation-for-Gastrointestinal-Tract-Cancer\models\best_epoch-00.bin", True)
     with torch.no_grad():
         pred = model(img)
         pred = (nn.Sigmoid()(pred)>0.5).double()
