@@ -24,9 +24,10 @@ df = pd.read_csv('train_data_processed.csv')
 pagetitle = dcc.Markdown('# OncoScan AI: Advanced Imaging for Stomach and Intestine Cancer')
 graphtitle = dcc.Markdown(children='')
 prediction_figure = dcc.Graph(figure = {})
-case_dropdown = dcc.Dropdown(options = sorted(df['case'].unique()),
-                             value=123,
+prediction_dropdown = dcc.Dropdown(options = ['custom model', 'pretrained model'],
+                             value='custom model',
                              clearable=False)
+
 
 layout = dbc.Container([
     dbc.Row([
@@ -37,6 +38,7 @@ layout = dbc.Container([
     ], justify='left'),
     dbc.Row([
         # dbc.Col([upload_btn], width=6),
+        dbc.Col([prediction_dropdown], width = 6),
         dcc.Upload(
             id="upload-data",
             children=html.Div(
@@ -64,11 +66,12 @@ layout = dbc.Container([
     Output('pred_fig', 'src'),
     Output(graphtitle, 'children'),
     Input('upload-data', 'contents'),
+    Input(prediction_dropdown, 'value'),
     State('upload-data', 'filename'),
     State('upload-data', 'last_modified')
 
 )
-def update_animation(img, filenames, last_modified):
+def update_animation(img, model_option, filenames, last_modified):
     content_type, content_string = img.split(',')
     image_data = base64.b64decode(content_string)
     img = np.array(Image.open(io.BytesIO(image_data)))
@@ -83,7 +86,16 @@ def update_animation(img, filenames, last_modified):
     img = img.to(CFG.device)
 
     print(img.shape)
-    model = load_model(r"S:\DS 5500 - Capstone\Image-Segmentation-for-Gastrointestinal-Tract-Cancer\full_custom_model.pt", False)
+    print(model_option) # Experiment only. 
+    if model_option == 'custom model':
+        model_name = r'S:\DS 5500 - Capstone\Image-Segmentation-for-Gastrointestinal-Tract-Cancer\models\full_custom_model.pt'
+        pretrain = False
+    else:
+        model_name = r'S:\DS 5500 - Capstone\Image-Segmentation-for-Gastrointestinal-Tract-Cancer\models\best_epoch-00.bin'
+        pretrain = True
+
+    model = load_model(model_name, pretrained = pretrain)
+
     with torch.no_grad():
         pred = model(img)
         pred = (nn.Sigmoid()(pred)>0.5).double()
@@ -91,6 +103,4 @@ def update_animation(img, filenames, last_modified):
     print(pred.shape)
     out = plot_single(img, pred)
     
-    # fig = px.imshow(pred)
-    # fig = visualize_batch(image, preds)
     return out, 'Prediction Window'
