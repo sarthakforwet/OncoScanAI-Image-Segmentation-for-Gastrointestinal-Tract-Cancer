@@ -45,6 +45,7 @@ navbar = dbc.NavbarSimple(
     className="mb-2",
 )
 
+server = app.server
 app.layout = dbc.Container([navbar, dash.page_container], fluid=True)
 
 if __name__=="__main__":
